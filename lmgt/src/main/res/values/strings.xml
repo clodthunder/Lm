@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">lm</string>
+    <string name="not_network_connection">当前网络异常</string>
+    <string name="error_server">服务端异常</string>
+</resources>

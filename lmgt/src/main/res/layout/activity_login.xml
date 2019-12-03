@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/ll_login_view"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+    <!-- 公共的toolbar -->
+    <include layout="@layout/common_tb" />
+
+    <android.support.v7.widget.AppCompatEditText
+        android:id="@+id/et_user_name"
+        android:layout_width="match_parent"
+        android:hint="用户名"
+        android:text="cyq"
+        android:layout_height="60dp" />
+
+    <android.support.v7.widget.AppCompatEditText
+        android:id="@+id/et_user_pwd"
+        android:layout_width="match_parent"
+        android:hint="密码"
+        android:text="123456"
+        android:layout_height="60dp" />
+
+    <android.support.v7.widget.AppCompatButton
+        android:id="@+id/btn_login"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="登录" />
+
+    <android.support.v7.widget.AppCompatTextView
+        android:id="@+id/tv_response"
+        android:layout_width="match_parent"
+        android:hint="response"
+        android:layout_height="wrap_content" />
+</LinearLayout>

@@ -1,0 +1,206 @@
+ JsonRequest @RequestBody
+
+  @POST("authz/login")
+     Observable<BaseResponse<TokenRespose>> requestLogin(@Body RequestBody requestBody);
+
+    使用时 构建RequestBody
+        JsonObject params = new JsonObject();
+        JsonObject param = new JsonObject();
+        param.addProperty("userName", userName);
+        param.addProperty("password", AESUtils.encryptForJS(pwd));
+        params.add("params", param);
+        RequestBody requestBody = RequestBody.create(MediaType.parse("application/json"), params.toString());
+        mRepositoryManager.obtainRetrofitService(UserService.class).requestLogin(requestBody)
+
+
+ 【AppComponent】 这里面包含  Application AppModule ClientModule GlobalConfigModule
+1、 ArmsUtils#obtainAppComponentFromContext(Context) 获取AppComponent 实例
+2.  AppManager#getAppManager()} 这里可以获取activity 管理的manager实例对activity 进行管理
+3.  IRepositoryManager repositoryManager(); 网络请求管理类
+       3.1 Retrofit service
+            <T> T obtainRetrofitService(@NonNull Class<T> service);
+       3.2 RxCache service
+            <T> T obtainCacheService(@NonNull Class<T> cache);
+       3.3 重要： 清理所有缓存
+            void clearAllCache();
+       3.4 //获取context
+            Context getContext();
+4.  RxErrorHandler
+5.  ImageLoader imageLoader(); 这里可以配置 动态更换图片框架
+
+比较重要的组件：
+AppComponent 包含
+AppManager
+IRepositoryManager
+RxErrorHandler
+ImageLoader
+OkHttpClient
+Gson
+File cacheFile
+Cache cacheFactory
+ExecutorService
+
+
+关于Module 配置 AppComponent 中可以看到
+注意: GlobalConfigModule 在 AppDelegate 中使用 AppDelegate 在BaseApplication 中实例化了
+
+    这些都是在  GlobalConfigModule 中提供了 所以在 xxxPresenter.java 中都可以通过这种方式获取实例
+    @Inject
+    RxErrorHandler mErrorHandler;
+    @Inject
+    Application mApplication;
+    @Inject
+    ImageLoader mImageLoader;
+    @Inject
+    AppManager mAppManager;
+
+注意：AppModule 在 AppComponent 中可以看到
+    @Inject
+    Gson mGson;
+
+    bindRepositoryManager
+    ActivityLifecycle
+    fragmnetLigecycle
+    等生命周期可以在这里查看到
+
+注意：ClientModule 在AppComponent 中可以看到
+
+    @Inject
+    RxErrorHandler rxErrorHandler;
+
+    @Inject
+    RxCache  rxCache;
+
+    @Inject
+    Retrofit provideRetrofit(); 这里可以配置retrofit
+
+    @Inject
+    OkHttpClient provideClient();这里可以配置OkHttpClient
+
+
+ 【progressManager】
+ 1.引入库
+ OkHttpClient = ProgressManager.getInstance().with(new OkHttpClient.Builder()).build();
+
+ 2.使用
+ // Glide load
+ ProgressManager.getInstance().addResponseListener(IMAGE_URL, getGlideListener());
+ // Okhttp/Retofit download
+ ProgressManager.getInstance().addResponseListener(DOWNLOAD_URL, getDownloadListener());
+ // Okhttp/Retofit upload
+ ProgressManager.getInstance().addRequestListener(UPLOAD_URL, getUploadListener());
+
+
+使用方法参考这个类：
+https://github.com/JessYanCoding/ProgressManager/blob/master/app/src/main/java/me/jessyan/progressmanager/demo/AdvanceActivity.java
+
+ private ProgressBar mGlideProgress;
+  mGlideProgress = findViewById(R.id.glide_progress);
+   mNewImageUrl = ProgressManager
+                  .getInstance()
+                  .addDiffResponseListenerOnSameUrl("http://jessyancoding.github.io/images/RxCache.png", getGlideListener());
+ //Okhttp/Retofit 下载监听
+        mNewDownloadUrl = ProgressManager
+                .getInstance()
+                .addDiffResponseListenerOnSameUrl("http://jessyancoding.github.io/images/RxCache.png", getDownloadListener());
+        //Okhttp/Retofit 上传监听
+        mNewUploadUrl = ProgressManager
+                .getInstance()
+                .addDiffRequestListenerOnSameUrl("http://upload.qiniu.com/", "test", getUploadListener());
+
+
+
+/**
+     * 点击开始上传资源,为了演示,就不做重复点击的处理,即允许用户在还有进度没完成的情况下,使用同一个 url 开始新的上传
+     */
+    private void uploadStart() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    //为了方便就不动态申请权限了,直接将文件放到CacheDir()中
+                    File file = new File(getCacheDir(), "a.java");
+                    //读取Assets里面的数据,作为上传源数据
+                    writeToFile(getAssets().open("a.java"), file);
+
+                    Request request = new Request.Builder()
+                            .url(mNewUploadUrl)
+                            .post(RequestBody.create(MediaType.parse("multipart/form-data"), file))
+                            .build();
+
+                    Response response = mOkHttpClient.newCall(request).execute();
+                    response.body();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    //当外部发生错误时,使用此方法可以通知所有监听器的 onError 方法
+                    ProgressManager.getInstance().notifyOnErorr(mNewUploadUrl, e);
+                }
+            }
+        }).start();
+    }
+
+    /**
+     * 点击开始下载资源,为了演示,就不做重复点击的处理,即允许用户在还有进度没完成的情况下,使用同一个 url 开始新的下载
+     */
+    private void downloadStart() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Request request = new Request.Builder()
+                            .url(mNewDownloadUrl)
+                            .build();
+
+                    Response response = mOkHttpClient.newCall(request).execute();
+
+                    InputStream is = response.body().byteStream();
+                    //为了方便就不动态申请权限了,直接将文件放到CacheDir()中
+                    File file = new File(getCacheDir(), "download");
+                    FileOutputStream fos = new FileOutputStream(file);
+                    BufferedInputStream bis = new BufferedInputStream(is);
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = bis.read(buffer)) != -1) {
+                        fos.write(buffer, 0, len);
+                    }
+                    fos.flush();
+                    fos.close();
+                    bis.close();
+                    is.close();
+
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    //当外部发生错误时,使用此方法可以通知所有监听器的 onError 方法
+                    ProgressManager.getInstance().notifyOnErorr(mNewDownloadUrl, e);
+                }
+            }
+        }).start();
+    }
+
+
+
+ 【RetrofitUrlManager】
+ 动态配置baseUrl 的地址 以及单独给接口配置ip 地址的方法
+
+ //单个请求 配置baseUrl
+ public interface ApiService {
+      @Headers({"Domain-Name: douban"}) // 加上 Domain-Name header
+      @GET("/v2/book/{id}")
+      Observable<ResponseBody> getBook(@Path("id") int id);
+ }
+ // 可在 App 运行时,随时切换 BaseUrl (指定了 Domain-Name header 的接口)
+  RetrofitUrlManager.getInstance().putDomain("douban", "https://api.douban.com");
+
+//全局配置 baseUrl
+ // 全局 BaseUrl 的优先级低于 Domain-Name header 中单独配置的,其他未配置的接口将受全局 BaseUrl 的影响
+ RetrofitUrlManager.getInstance().setGlobalDomain("your BaseUrl");
+
+
+
+ 目前框架发现的问题有：
+2019-11-29 08:44:21.771 2540-10818/? I/MmTelFeatureConnection: onDeregistered ::
+一直打印
+
+ W/SQLiteConnectionPool: A SQLiteConnection object for database '/data/user_de/0/com.android.deskclock/databases/alarms.db' was leaked!  Please fix your application to end transactions in progress properly and to close the database when it is no longer needed.
+ 2019-11-29 08:33:16.634 11174-11244/? D/FirebaseInstanceId: background sync failed: TIMEOUT, retry in 30s

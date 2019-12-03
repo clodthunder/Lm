@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--状态栏颜色-->
+    <color name="colorPrimary">#27cece</color>
+    <color name="colorPrimaryDark">#108181</color>
+    <color name="colorAccent">#838182</color>
+    <color name="white">#FFFFFF</color>
+    <!--透明-->
+    <color name="transparent">#00000000</color>
+</resources>
